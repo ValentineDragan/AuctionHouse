@@ -1,68 +1,73 @@
 package auctionhouse;
 
+import java.util.List;
+import java.util.ArrayList;
+
 public class Lot {
 	
 	private CatalogueEntry catalogueEntry;
-	private int lotId;
-	private int sellerId;
+	private int lotNumber;
+	private String sellerName;
 	private Money reservePrice;
 	private Money openingPrice;
-	private int assignedAuctioneerId;
+	private String assignedAuctioneerName;
 	private LotStatus lotStatus;
-	private int highestBidderId;
+	private String highestBidderName;
 	private Money highestBidAmount;
 	
-	public Lot(int lotId, String lotDescription, int sellerId, Money reservePrice) {
+	private List<String> interestedBuyerNames =  new ArrayList<String>();
+	
+	public Lot(String sellerName, int lotNumber, String description, Money reservePrice) {
 		super();
-		this.lotId = lotId;
-		this.sellerId = sellerId;
+		this.sellerName = sellerName;
+		this.lotNumber = lotNumber;
 		this.reservePrice = reservePrice;
 		this.lotStatus = LotStatus.UNSOLD;
-		this.catalogueEntry = new CatalogueEntry(lotId, lotDescription, lotStatus);
+		this.catalogueEntry = new CatalogueEntry(lotNumber, description, lotStatus);
 	}
 	
 	public CatalogueEntry getCatalogueEntry() {
 		return catalogueEntry;
 	}
 
-
-	public int getLotId() {
-		return lotId;
+	public int getLotNumber() {
+		return lotNumber;
 	}
 
-
-	public int getSellerId() {
-		return sellerId;
+	public String getSellerName() {
+		return sellerName;
 	}
-
 
 	public Money getReservePrice() {
 		return reservePrice;
 	}
 
-
 	public Money getOpeningPrice() {
 		return openingPrice;
 	}
 
-
-	public int getAssignedAuctioneerId() {
-		return assignedAuctioneerId;
+	public String getAssignedAuctioneerName() {
+		return assignedAuctioneerName;
 	}
-
 
 	public LotStatus getLotStatus() {
 		return lotStatus;
 	}
 
-
-	public int getHighestBidderId() {
-		return highestBidderId;
+	public String getHighestBidderName() {
+		return highestBidderName;
 	}
-
 
 	public Money getHighestBidAmount() {
 		return highestBidAmount;
+	}
+	
+	public void addInterestedBuyer(String buyerName) {
+		interestedBuyerNames.add(buyerName);
+	}
+	
+	private void addNewBidder() {
+		
 	}
 
 }

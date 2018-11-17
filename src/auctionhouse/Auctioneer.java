@@ -1,20 +1,26 @@
 package auctionhouse;
 
+import java.util.List;
+import java.util.ArrayList;
+
 public class Auctioneer {
 
-	private int auctioneerId;
+	private List<Lot> openedLots = new ArrayList<Lot>();
+	
+	private String name;
 	private String messagingAddress;
 	
-	public Auctioneer(int auctioneerId, String messagingAddress) {
+	public Auctioneer(String name, String messagingAddress) {
 		super();
-		this.auctioneerId = auctioneerId;
+		this.name = name;
 		this.messagingAddress = messagingAddress;
 	}
 	
-	public int getAuctioneerId() {
-		return auctioneerId;
+	public String getName() {
+		return name;
 	}
 	public String getMessagingAddress() {
 		return messagingAddress;
 	}
+	
 }

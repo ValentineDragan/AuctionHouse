@@ -6,13 +6,21 @@ package auctionhouse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * @author pbj
  *
  */
 public class AuctionHouseImp implements AuctionHouse {
-
+	
+	private HashMap<String, Buyer> buyers = new HashMap<String, Buyer>();
+	private HashMap<String, Seller> sellers = new HashMap<String, Seller>();
+	private HashMap<String, Auctioneer> auctioneers = new HashMap<String, Auctioneer>();
+	private HashMap<Integer, Lot> lots = new HashMap<Integer, Lot>();
+	private List<CatalogueEntry> catalogueEntries = new ArrayList<CatalogueEntry>();
+	
     private static Logger logger = Logger.getLogger("auctionhouse");
     private static final String LS = System.lineSeparator();
     
@@ -23,8 +31,9 @@ public class AuctionHouseImp implements AuctionHouse {
           + "-------------------------------------------------------------";
     }
    
+    
     public AuctionHouseImp(Parameters parameters) {
-
+    	
     }
 
     public Status registerBuyer(
@@ -59,9 +68,8 @@ public class AuctionHouseImp implements AuctionHouse {
     public List<CatalogueEntry> viewCatalogue() {
         logger.fine(startBanner("viewCatalog"));
         
-        List<CatalogueEntry> catalogue = new ArrayList<CatalogueEntry>();
-        logger.fine("Catalogue: " + catalogue.toString());
-        return catalogue;
+        logger.fine("Catalogue: " + catalogueEntries.toString());
+        return catalogueEntries;
     }
 
     public Status noteInterest(
@@ -97,4 +105,5 @@ public class AuctionHouseImp implements AuctionHouse {
  
         return Status.OK();  
     }
+    
 }

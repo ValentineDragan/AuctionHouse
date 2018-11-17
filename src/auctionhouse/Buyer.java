@@ -1,16 +1,23 @@
 package auctionhouse;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Buyer {
-	private int byerId;
+	
+	private String name;
 	private PersonalDetails personalDetails; // PersonalDetails class needs to be updated!
 	private String messagingAddress;
 	private String buyerAccount;
 	private String buyerAuthorisation;
 	
-	public Buyer(int byerId, PersonalDetails personalDetails, String messagingAddress, String buyerAccount,
+	private List<Lot> biddedLots = new ArrayList<Lot>();
+	private List<Lot> interestedLots = new ArrayList<Lot>();
+	
+	public Buyer(String name, PersonalDetails personalDetails, String messagingAddress, String buyerAccount,
 			String buyerAuthorisation) {
 		super();
-		this.byerId = byerId;
+		this.name = name;
 		this.personalDetails = personalDetails;
 		this.messagingAddress = messagingAddress;
 		this.buyerAccount = buyerAccount;
@@ -18,8 +25,8 @@ public class Buyer {
 	}
 
 
-	public int getByerId() {
-		return byerId;
+	public String getName() {
+		return name;
 	}
 
 	public PersonalDetails getPersonalDetails() {
