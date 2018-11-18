@@ -62,11 +62,20 @@ public class Lot {
 		return highestBidAmount;
 	}
 	
+	public List<String> getInterestedBuyers() {
+		return interestedBuyerNames;
+	}
+	
+	
 	public void addInterestedBuyer(String buyerName) {
 		interestedBuyerNames.add(buyerName);
 	}
 	
 	public Status makeBid(String newBidderName, Money newBidAmount) {
+		
+		if(!interestedBuyerNames.contains(newBidderName)) {
+			return new Status(Status.Kind.ERROR, "Buyer not interested in Lot");
+		}
 		
 		if(highestBidAmount.compareTo(newBidAmount) < 0) {
 			highestBidderName = newBidderName;
@@ -76,6 +85,27 @@ public class Lot {
 		}
 		
 		return new Status(Status.Kind.ERROR, "Bid less than last highest bid");		
+	}
+	
+	public Status openLot(String assignedAuctioneerName) {
+		
+		if(lotStatus != LotStatus.UNSOLD)
+			return new Status(Status.Kind.ERROR, "Lot already sold");
+		
+		this.assignedAuctioneerName = assignedAuctioneerName;
+		lotStatus = LotStatus.IN_AUCTION;
+		highestBidderName = "";
+		highestBidAmount = new Money("0");
+		
+		return new Status(Status.Kind.OK, "Bid open");
+	}
+	
+	public void closeLot() {
+		lotStatus = LotStatus.SOLD_PENDING_PAYMENT;
+	}
+	
+	public void successfulSale() {
+		lotStatus = LotStatus.SOLD;
 	}
 
 }

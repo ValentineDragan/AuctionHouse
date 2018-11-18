@@ -20,6 +20,10 @@ public class AuctionHouseImp implements AuctionHouse {
 	private HashMap<String, Auctioneer> auctioneers = new HashMap<String, Auctioneer>();
 	private HashMap<Integer, Lot> lots = new HashMap<Integer, Lot>();
 	private List<CatalogueEntry> catalogueEntries = new ArrayList<CatalogueEntry>();
+	private Parameters parameters;
+	
+	private MessagingService messagingService = new MockMessagingService();
+	private BankingService bankingService = new MockBankingService();
 	
     private static Logger logger = Logger.getLogger("auctionhouse");
     private static final String LS = System.lineSeparator();
@@ -33,7 +37,7 @@ public class AuctionHouseImp implements AuctionHouse {
    
     
     public AuctionHouseImp(Parameters parameters) {
-    	
+    	this.parameters = parameters;
     }
 
     public Status registerBuyer(
@@ -86,7 +90,31 @@ public class AuctionHouseImp implements AuctionHouse {
             int lotNumber) {
         logger.fine(startBanner("openAuction " + auctioneerName + " " + lotNumber));
         
-        return Status.OK();
+        Auctioneer auctioneer;
+        if(auctioneers.get(auctioneerName) != null) {
+        	auctioneer = auctioneers.get(auctioneerName);
+        } else {
+        	auctioneer = new Auctioneer(auctioneerName, auctioneerAddress);
+        	auctioneers.put(auctioneerName, auctioneer);
+        }
+        
+        Lot lot = lots.get(lotNumber);
+        Status status;
+        
+        if(lot != null) {
+        	status = lot.openLot(auctioneerName);
+        	List<String> interestedBuyers = lot.getInterestedBuyers();
+        	
+        	for(String buyerName: interestedBuyers) {
+        		Buyer interestedBuyer = buyers.get(buyerName);
+        		messagingService.auctionOpened(interestedBuyer.getMessagingAddress(), lotNumber);
+        	}
+        	
+        } else {
+        	status = new Status(Status.Kind.ERROR, "Lot does not exist");
+        }       
+        
+        return status;
     }
 
     public Status makeBid(
@@ -95,7 +123,18 @@ public class AuctionHouseImp implements AuctionHouse {
             Money bid) {
         logger.fine(startBanner("makeBid " + buyerName + " " + lotNumber + " " + bid));
 
-        return Status.OK();    
+        if(buyers.get(buyerName) == null) {
+        	return new Status(Status.Kind.ERROR, "Buyer not registered");
+        }
+        
+        Lot lotToBid = lots.get(lotNumber);
+        Status status = lotToBid.makeBid(buyerName, bid);
+        
+        if(status.kind == Status.Kind.OK) {
+        	messagingService.bidAccepted(buyers.get(buyerName).getMessagingAddress(), lotNumber, bid);
+        }
+        
+        return status;    
     }
 
     public Status closeAuction(
@@ -103,7 +142,39 @@ public class AuctionHouseImp implements AuctionHouse {
             int lotNumber) {
         logger.fine(startBanner("closeAuction " + auctioneerName + " " + lotNumber));
  
-        return Status.OK();  
+        Lot lot = lots.get(lotNumber);
+        Status status;
+        
+        if(lot != null) {
+        	lot.closeLot();
+        	List<String> interestedBuyers = lot.getInterestedBuyers();
+        	
+        	String sellerName = lot.getSellerName();
+        	Seller seller = sellers.get(sellerName);
+        	
+        	String buyerName = lot.getHighestBidderName();
+        	Buyer buyer = buyers.get(buyerName);
+        	
+        	// TODO: add premium, commision, stuff
+        	status = bankingService.transfer(buyer.getBuyerAccount(), buyer.getBuyerAuthorisation(), seller.getSellerAccount(), lot.getHighestBidAmount());
+        	
+        	if(status.kind == Status.Kind.OK) {
+        		for(String interestedBuyerName: interestedBuyers) {
+            		Buyer interestedBuyer = buyers.get(interestedBuyerName);
+            		messagingService.lotSold(interestedBuyer.getMessagingAddress(), lotNumber);
+            	}
+        	} else {
+        		for(String interestedBuyerName: interestedBuyers) {
+            		Buyer interestedBuyer = buyers.get(interestedBuyerName);
+            		messagingService.lotUnsold(interestedBuyer.getMessagingAddress(), lotNumber);
+            	}
+        	}
+               	
+        } else {
+        	status = new Status(Status.Kind.ERROR, "Lot does not exist");
+        }       
+        
+        return status;
     }
     
 }
