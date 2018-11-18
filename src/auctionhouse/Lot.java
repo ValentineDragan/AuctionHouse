@@ -18,7 +18,7 @@ public class Lot {
 	private List<String> interestedBuyerNames =  new ArrayList<String>();
 	
 	public Lot(String sellerName, int lotNumber, String description, Money reservePrice) {
-		super();
+
 		this.sellerName = sellerName;
 		this.lotNumber = lotNumber;
 		this.reservePrice = reservePrice;
@@ -66,8 +66,16 @@ public class Lot {
 		interestedBuyerNames.add(buyerName);
 	}
 	
-	private void addNewBidder() {
+	public Status makeBid(String newBidderName, Money newBidAmount) {
 		
+		if(highestBidAmount.compareTo(newBidAmount) < 0) {
+			highestBidderName = newBidderName;
+			highestBidAmount = newBidAmount;
+			
+			return new Status(Status.Kind.OK, "New bid successful");
+		}
+		
+		return new Status(Status.Kind.ERROR, "Bid less than last highest bid");		
 	}
 
 }
