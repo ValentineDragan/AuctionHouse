@@ -20,7 +20,7 @@ public class AuctionHouseImp implements AuctionHouse {
 	private HashMap<String, Seller> sellers = new HashMap<String, Seller>();
 	private HashMap<String, Auctioneer> auctioneers = new HashMap<String, Auctioneer>();
 	private HashMap<Integer, Lot> lots = new HashMap<Integer, Lot>();
-	private PriorityQueue<CatalogueEntry> catalogueEntries = new PriorityQueue<CatalogueEntry>();
+	private PriorityQueue<CatalogueEntry> catalogueEntries = new PriorityQueue<CatalogueEntry>(new CatalogueEntryComparator());
 	private Parameters parameters;
 	
 	private MessagingService messagingService; 
@@ -246,52 +246,58 @@ public class AuctionHouseImp implements AuctionHouse {
         }
         
         Status status = lot.openLot(auctioneerName);
-        // !!!!
+        // Status OK if lot in UNOPENED state
         if(status.kind == Status.Kind.OK) {
         	
-        	List<String> interestedBuyers = lot.getInterestedBuyers();
-        	
+        	// Messege seller and interested buyers.
         	Seller seller = sellers.get(lot.getSellerName());
         	messagingService.auctionOpened(seller.getMessagingAddress(), lotNumber);
         	
-        	for(String buyerName: interestedBuyers) {
-        		Buyer interestedBuyer = buyers.get(buyerName);
-        		messagingService.auctionOpened(interestedBuyer.getMessagingAddress(), lotNumber);
-        	}  
+        	List<String> interestedBuyers = lot.getInterestedBuyers();
+        	sendMessageToBuyers(interestedBuyers, MessageFlag.AUCTION_OPENED, lotNumber, null);
         }
     	         
         return status;
     }
 
-    
+    /**
+     * Update lot with new bid.
+     * @param buyerName: bidder
+     * @param lotNumber: number identification for Lot
+     * @return Status: ERROR is bid less than the current highest or buyer not interested in lot
+     */
     public Status makeBid(
             String buyerName,
             int lotNumber,
             Money bid) {
         logger.fine(startBanner("makeBid " + buyerName + " " + lotNumber + " " + bid));
 
+        if(!checkStringValid(buyerName)) {
+        	return Status.error("Buyer name in makeBid cannot be null or empty.");
+        }
+        
         if(buyers.get(buyerName) == null) {
-        	return new Status(Status.Kind.ERROR, "Buyer not registered");
+        	return Status.error("Buyer with name " + buyerName + " not registered with the System");
         }
         
         Lot lotToBid = lots.get(lotNumber);
         if(lotToBid == null) {
-        	return Status.error("Lot does not exist");
+        	return Status.error("Lot with number " + lotNumber + " does not exists in the System");
         }
         
         Status status = lotToBid.makeBid(buyerName, bid);
         
+        // Message auctioneer, interested buyers, seller
         if(status.kind == Status.Kind.OK) {
         	
         	Auctioneer auctioneer = auctioneers.get(lotToBid.getAssignedAuctioneerName());
         	messagingService.bidAccepted(auctioneer.getMessagingAddress(), lotNumber, bid);
         	
-        	for(String str: lotToBid.getInterestedBuyers()) {
-        		if(str != buyerName) {
-        			Buyer buyer = buyers.get(str);
-        			messagingService.bidAccepted(buyer.getMessagingAddress(), lotNumber, bid);
-        		}
-        	}       	
+        	List<String> interestedBuyers = lotToBid.getInterestedBuyers();
+        	// Do not message current bidder.
+        	List<String> buyersToMessage = new ArrayList<String>(interestedBuyers);
+        	buyersToMessage.remove(buyerName);
+        	sendMessageToBuyers(buyersToMessage, MessageFlag.BID_ACCEPTED, lotNumber, bid);      	    
         	
         	Seller seller = sellers.get(lotToBid.getSellerName());
         	messagingService.bidAccepted(seller.getMessagingAddress(), lotNumber, bid);
@@ -301,87 +307,68 @@ public class AuctionHouseImp implements AuctionHouse {
         return status;    
     }
 
-    private void sendMessageToBuyers(List<String> buyerNames, String flagType, int lotNumber, Money amount) {
-    	if (flagType.equals("LOT SOLD")) {
-    		for (String str: buyerNames) {
-    			Buyer buyer = buyers.get(str);
-    			messagingService.lotSold(buyer.getMessagingAddress(), lotNumber);
-    		}
-    	}
-    	else if (flagType.equals("LOT UNSOLD")) {
-    		for (String str: buyerNames) {
-    			Buyer buyer = buyers.get(str);
-    			messagingService.lotUnsold(buyer.getMessagingAddress(), lotNumber);
-    		}
-    	}
-    	else if (flagType.equals("BID ACCEPTED")) {
-    		for (String str: buyerNames) {
-    			Buyer buyer = buyers.get(str);
-    			messagingService.bidAccepted(buyer.getMessagingAddress(), lotNumber, amount);
-    		}
-    	}
-    	else if (flagType.equals("AUCTION OPENED")) {
-    		for (String str: buyerNames) {
-    			Buyer buyer = buyers.get(str);
-    			messagingService.auctionOpened(buyer.getMessagingAddress(), lotNumber);
-    		}
-    	}
-    }
-    
-    // check same auctioneer
+    /**
+     * Close lot auction. Change lot state, send messages to buyers, sellers. 
+     * Make bank transfers
+     * @param auctioneerName: must be the same as the auctioneer the opened the auction for the lot
+     * @param lotNumber
+     * @return Status
+     */
     public Status closeAuction(
             String auctioneerName,
             int lotNumber) {
         logger.fine(startBanner("closeAuction " + auctioneerName + " " + lotNumber));
  
-        Lot lot = lots.get(lotNumber);
-        LotStatus lotStatus;
+        if(!checkStringValid(auctioneerName)) {
+        	return Status.error("Auctioneer name in closeAuction cannot be null or empty");
+        }
         
-        if(lot != null) {
-        	if (lot.getLotStatus() == LotStatus.IN_AUCTION) {
-        		//
-    			Buyer highestBidder = buyers.get(lot.getHighestBidderName());
-    			Seller seller = sellers.get(lot.getSellerName());
-    			Money hammerPrice = lot.getHighestBidAmount();
-        		
-    			//
-        		if (lot.getReservePrice().lessEqual(hammerPrice)) {			
-        			Money moneyToCollect = hammerPrice.addPercent(parameters.buyerPremium);
-        			Money moneyToPay = hammerPrice.subtract(new Money(Double.toString(parameters.commission)));
-        			Status buyerTransferStatus = bankingService.transfer(highestBidder.getBuyerAccount(), highestBidder.getBuyerAuthorisation(), parameters.houseBankAccount, moneyToCollect);
-        			Status sellerTransferStatus = bankingService.transfer(parameters.houseBankAccount, parameters.houseBankAuthCode, seller.getSellerAccount(), moneyToPay);
-        		
-        			//
-        			if(buyerTransferStatus.kind == Status.Kind.OK && sellerTransferStatus.kind == Status.Kind.OK) {
-        				lotStatus = LotStatus.SOLD;
-        				lot.closeLot(lotStatus);
-        				sendMessageToBuyers(lot.getInterestedBuyers(), "LOT SOLD", lotNumber, new Money("0"));
-        				messagingService.lotSold(seller.getMessagingAddress(), lotNumber);
-        				return new Status(Status.Kind.SALE, "");
-        			} else {
-        				lotStatus = LotStatus.SOLD_PENDING_PAYMENT;
-        				lot.closeLot(lotStatus);
-        				return new Status(Status.Kind.SALE_PENDING_PAYMENT, "");
-        			}
-        		}
-        		//
-        		else {
-        			lotStatus = LotStatus.UNSOLD;
-        			lot.closeLot(lotStatus);
-        			sendMessageToBuyers(lot.getInterestedBuyers(), "LOT UNSOLD", lotNumber, new Money("0"));
-        			messagingService.lotUnsold(seller.getMessagingAddress(), lotNumber);
-        			return new Status(Status.Kind.NO_SALE, "");
-        		}
-        	}
-        	// return ERROR if the lot is not in auction
-        	else {
-        		return new Status(Status.Kind.ERROR, "");
-        	}
+        Lot lot = lots.get(lotNumber);
+        
+        if(lot == null) {
+        	return Status.error("Lot with number " + lotNumber + " does not exist");
         }
-        // return ERROR if the lot does not exist
-        else {
-        	return new Status(Status.Kind.ERROR, "");
+        
+        if(!lot.getAssignedAuctioneerName().equals(auctioneerName)) {
+        	return Status.error("Lot auction must be closed by auctioneer that opened it!");
         }
+        
+        if (lot.getLotStatus() != LotStatus.IN_AUCTION) {
+        	return Status.error("Lot with number " + lotNumber + " was not in open auction");
+        }
+
+        Buyer highestBidder = buyers.get(lot.getHighestBidderName());
+		Seller seller = sellers.get(lot.getSellerName());
+		Money hammerPrice = lot.getHighestBidAmount();
+
+		// reservePrice not reached, lot not sold
+        if (!lot.getReservePrice().lessEqual(hammerPrice)) { 
+			lot.closeLot(LotStatus.UNSOLD);
+			sendMessageToBuyers(lot.getInterestedBuyers(), MessageFlag.LOT_UNSOLD, lotNumber, null);
+			messagingService.lotUnsold(seller.getMessagingAddress(), lotNumber);
+			
+			return new Status(Status.Kind.NO_SALE, "Lot " + lotNumber + "was not sold. Hammer price less than reserve price");
+        }	
+        
+		Money moneyToCollectFromBuyer = hammerPrice.addPercent(parameters.buyerPremium);
+		Money moneyToPaySeller = hammerPrice.subtract(new Money(Double.toString(parameters.commission)));
+		
+		Status buyerTransferStatus = bankingService.transfer(highestBidder.getBuyerAccount(), highestBidder.getBuyerAuthorisation(), parameters.houseBankAccount, moneyToCollectFromBuyer);
+		Status sellerTransferStatus = bankingService.transfer(parameters.houseBankAccount, parameters.houseBankAuthCode, seller.getSellerAccount(), moneyToPaySeller);
+
+		// Successful transfers, lot sold.
+		if(buyerTransferStatus.kind == Status.Kind.OK && sellerTransferStatus.kind == Status.Kind.OK) {
+			lot.closeLot(LotStatus.SOLD);
+			sendMessageToBuyers(lot.getInterestedBuyers(), MessageFlag.LOT_SOLD, lotNumber, new Money("0"));
+			messagingService.lotSold(seller.getMessagingAddress(), lotNumber);
+			
+			return new Status(Status.Kind.SALE, "");
+		} 
+		
+		// One of the transfers failed.
+		lot.closeLot(LotStatus.SOLD_PENDING_PAYMENT);
+		
+		return new Status(Status.Kind.SALE_PENDING_PAYMENT, "One of the bank transfers failed for lot " + lotNumber);			        
     }
 
         		
@@ -395,5 +382,33 @@ public class AuctionHouseImp implements AuctionHouse {
     	
     	return true;
     }
+    
+    private void sendMessageToBuyers(List<String> buyerNames, MessageFlag flagType, int lotNumber, Money amount) {
+    	if (flagType.equals(MessageFlag.LOT_SOLD)) {
+    		for (String str: buyerNames) {
+    			Buyer buyer = buyers.get(str);
+    			messagingService.lotSold(buyer.getMessagingAddress(), lotNumber);
+    		}
+    	}
+    	else if (flagType.equals(MessageFlag.LOT_UNSOLD)) {
+    		for (String str: buyerNames) {
+    			Buyer buyer = buyers.get(str);
+    			messagingService.lotUnsold(buyer.getMessagingAddress(), lotNumber);
+    		}
+    	}
+    	else if (flagType.equals(MessageFlag.BID_ACCEPTED)) {
+    		for (String str: buyerNames) {
+    			Buyer buyer = buyers.get(str);
+    			messagingService.bidAccepted(buyer.getMessagingAddress(), lotNumber, amount);
+    		}
+    	}
+    	else if (flagType.equals(MessageFlag.AUCTION_OPENED)) {
+    		for (String str: buyerNames) {
+    			Buyer buyer = buyers.get(str);
+    			messagingService.auctionOpened(buyer.getMessagingAddress(), lotNumber);
+    		}
+    	}
+    }
+    
     
 }
