@@ -128,22 +128,9 @@ public class Lot {
 		return new Status(Status.Kind.OK, assignedAuctioneerName + " has opened Lot " + this.lotNumber + " for bidding");
 	}
 	
-	// REMEMBER TO EDIT!
-	public Status closeLot(LotStatus lotStatus) {
+	public void closeLot(LotStatus lotStatus) {
 		this.lotStatus = lotStatus;
 		catalogueEntry.status = lotStatus;
-		if(highestBidAmount.compareTo(reservePrice) > 0) {
-			lotStatus = LotStatus.SOLD_PENDING_PAYMENT;
-			return new Status(Status.Kind.SALE_PENDING_PAYMENT, "Attempt to collect money from Buyer " + this.highestBidderName + " or pay "
-					+ "money to Seller " + this.sellerName + " has failed for Lot " + this.lotNumber);
-		}
-		
-		lotStatus = LotStatus.UNSOLD;
-		return new Status(Status.Kind.NO_SALE);
-	}
-	
-	public void successfulSale() {
-		
 	}
 
 }
