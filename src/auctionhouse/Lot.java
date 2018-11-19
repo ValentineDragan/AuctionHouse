@@ -67,10 +67,13 @@ public class Lot {
 	}
 	
 	
-	public void addInterestedBuyer(String buyerName) {
+	public Status addInterestedBuyer(String buyerName) {
 		if(!interestedBuyerNames.contains(buyerName)) {
 			interestedBuyerNames.add(buyerName);
-		}		
+			return new Status(Status.Kind.OK, "Buyer added to list of interested buyers");
+		}
+		else
+			return new Status(Status.Kind.ERROR, "Buyer is already interested in the Lot");
 	}
 	
 	public Status makeBid(String newBidderName, Money newBidAmount) {

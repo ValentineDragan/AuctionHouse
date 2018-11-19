@@ -42,7 +42,10 @@ public class AuctionHouseImp implements AuctionHouse {
     	messagingService = parameters.messagingService;
     	bankingService = parameters.bankingService;
     }
+    
 
+    // Creates a new Buyer object, and adds it to the buyers HashMap.
+    // Return the Status: 'Error' if the Buyer already exists, or 'OK' if the new Buyer has been created.
     public Status registerBuyer(
             String name,
             String address,
@@ -60,6 +63,8 @@ public class AuctionHouseImp implements AuctionHouse {
         return Status.OK();
     }
 
+    // Creates a new Seller object, and adds it to the sellers HashMap.
+    // Return the Status 'Error' if the Seller already exists, or 'OK' if the new Seller has been created.
     public Status registerSeller(
             String name,
             String address,
@@ -76,6 +81,8 @@ public class AuctionHouseImp implements AuctionHouse {
         return Status.OK();      
     }
 
+    // Creates a new Lot object, adds it to the lots HashMap and adds its CatalogueEntry to the catalogueEntries Queue.
+    // Return the Status: 'Error' if the Lot already exists, or 'OK' if the new Lot has been created.
     public Status addLot(
             String sellerName,
             int number,
@@ -96,6 +103,7 @@ public class AuctionHouseImp implements AuctionHouse {
         return Status.OK();    
     }
 
+    // Returns a List of Catalogue Entries, ordered by their lotNumber.
     public List<CatalogueEntry> viewCatalogue() {
         logger.fine(startBanner("viewCatalog"));
         
@@ -108,6 +116,8 @@ public class AuctionHouseImp implements AuctionHouse {
         return catalogueList;
     }
 
+    // Sends a signal to the Lot to add new interested buyer.
+    // Returns the Status: 'Error' if the Lot doesn't exist, or 'OK' if the buyer has been added successfully.
     public Status noteInterest(
             String buyerName,
             int lotNumber) {
@@ -118,11 +128,14 @@ public class AuctionHouseImp implements AuctionHouse {
         	return Status.error("No exisitng lot");
         }
         
+        // Check if buyer is already in the interestedBuyers list! It should return an error
         lot.addInterestedBuyer(buyerName);    	
             
         return Status.OK();   
     }
 
+    // Sends a signal to the Lot to open auction. Gets the list of all interested buyers, and uses messagingService to send a message to all the interested buyers.
+    // Returns the Status: ERROR, if the Lot doesn't exist, or Status= lot.openLot(..) ... complete here<
     public Status openAuction(
             String auctioneerName,
             String auctioneerAddress,
@@ -159,6 +172,7 @@ public class AuctionHouseImp implements AuctionHouse {
         return status;
     }
 
+    
     public Status makeBid(
             String buyerName,
             int lotNumber,
