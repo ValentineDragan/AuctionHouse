@@ -78,8 +78,8 @@ public class Lot {
 			interestedBuyerNames.add(buyerName);
 			return new Status(Status.Kind.OK, "Buyer " + buyerName +  " added to Lot " + this.lotNumber + "'s list of interested buyers");
 		}
-		else
-			return new Status(Status.Kind.ERROR, "Buyer " + buyerName + " is already interested in Lot " + this.lotNumber);
+		
+		return new Status(Status.Kind.ERROR, "Buyer " + buyerName + " is already interested in Lot " + this.lotNumber);
 	}
 
 	/**
@@ -117,7 +117,7 @@ public class Lot {
 	public Status openLot(String assignedAuctioneerName) {
 		
 		if(lotStatus != LotStatus.UNSOLD)
-			return new Status(Status.Kind.ERROR, "Auctioneer " + assignedAuctioneerName + " tried to open Lot " + this.lotNumber + ",which has already been auctioned");
+			return new Status(Status.Kind.ERROR, "Auctioneer " + assignedAuctioneerName + " tried to open Lot " + this.lotNumber + ", which has already been auctioned");
 		
 		this.assignedAuctioneerName = assignedAuctioneerName;
 		lotStatus = LotStatus.IN_AUCTION;

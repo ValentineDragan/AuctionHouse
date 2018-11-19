@@ -2,6 +2,7 @@ package auctionhouse;
 
 import java.util.Comparator;
 
+// Compare two catalogue entries by their lotNumber
 public class CatalogueEntryComparator implements Comparator<CatalogueEntry> {
 	
 	public int compare(CatalogueEntry c1, CatalogueEntry c2) {
