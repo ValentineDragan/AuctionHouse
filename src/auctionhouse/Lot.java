@@ -66,49 +66,76 @@ public class Lot {
 		return interestedBuyerNames;
 	}
 	
-	
+	/**
+	 * Adds the name of a new Buyer to this lot's list of interestedBuyers
+	 * 
+	 * @param buyerName the name of the buyer
+	 * @return Status ERROR if the buyerName is already in the list 
+	 *         Status OK if the buyer name has been successfully added to the list
+	 */
 	public Status addInterestedBuyer(String buyerName) {
 		if(!interestedBuyerNames.contains(buyerName)) {
 			interestedBuyerNames.add(buyerName);
-			return new Status(Status.Kind.OK, "Buyer added to list of interested buyers");
+			return new Status(Status.Kind.OK, "Buyer " + buyerName +  " added to Lot " + this.lotNumber + "'s list of interested buyers");
 		}
 		else
-			return new Status(Status.Kind.ERROR, "Buyer is already interested in the Lot");
+			return new Status(Status.Kind.ERROR, "Buyer " + buyerName + " is already interested in Lot " + this.lotNumber);
 	}
-	
+
+	/**
+	 * Updates the lot's highestBidderName and highestBidAmount
+	 * 
+	 * @param newBidderName the name of the buyer that has made a new bid
+	 * @param newBidAmount the amount that this buyer has bid
+	 * @return Status ERROR if the buyer's name is not in the list of interestedBuyers
+	 *                      or if the newBidAmount is less than the previous highestBidAmount
+	 *         Status OK if the new bid was successful
+	 */
 	public Status makeBid(String newBidderName, Money newBidAmount) {
 		
 		if(!interestedBuyerNames.contains(newBidderName)) {
-			return new Status(Status.Kind.ERROR, "Buyer not interested in Lot");
+			return new Status(Status.Kind.ERROR, "Buyer " + newBidderName + " is not interested in Lot " + this.lotNumber);
 		}
 		
 		if(highestBidAmount.compareTo(newBidAmount) < 0) {
 			highestBidderName = newBidderName;
 			highestBidAmount = newBidAmount;
 			
-			return new Status(Status.Kind.OK, "New bid successful");
+			return new Status(Status.Kind.OK, "Buyer " + newBidderName + " has successfully bidded on Lot " + this.lotNumber);
 		}
 		
-		return new Status(Status.Kind.ERROR, "Bid less than last highest bid");		
+		return new Status(Status.Kind.ERROR, "Buyer " + newBidderName + " tried to bid less than the highest bid on Lot " + this.lotNumber);		
 	}
 	
+	/**
+	 * Sets the lot's lotStatus to IN_AUCTION, assigns it an auctioneer and initializes the highestBidderName and highestBidAmount variables
+	 * 
+	 * @param assignedAuctioneerName the name of the Auctioneer who is assigned to this lot
+	 * @return Status ERROR if the lot has already been auctioned
+	 *         Status OK if the lot has been successfully opened for auction
+	 */
 	public Status openLot(String assignedAuctioneerName) {
 		
 		if(lotStatus != LotStatus.UNSOLD)
-			return new Status(Status.Kind.ERROR, "Lot already sold");
+			return new Status(Status.Kind.ERROR, "Auctioneer " + assignedAuctioneerName + " tried to open Lot " + this.lotNumber + ",which has already been auctioned");
 		
 		this.assignedAuctioneerName = assignedAuctioneerName;
 		lotStatus = LotStatus.IN_AUCTION;
+		this.catalogueEntry.status = lotStatus;
 		highestBidderName = "";
 		highestBidAmount = new Money("0");
 		
-		return new Status(Status.Kind.OK, "Bid open");
+		return new Status(Status.Kind.OK, assignedAuctioneerName + " has opened Lot " + this.lotNumber + " for bidding");
 	}
 	
-	public Status closeLot() {
+	// REMEMBER TO EDIT!
+	public Status closeLot(LotStatus lotStatus) {
+		this.lotStatus = lotStatus;
+		catalogueEntry.status = lotStatus;
 		if(highestBidAmount.compareTo(reservePrice) > 0) {
 			lotStatus = LotStatus.SOLD_PENDING_PAYMENT;
-			return new Status(Status.Kind.SALE_PENDING_PAYMENT);
+			return new Status(Status.Kind.SALE_PENDING_PAYMENT, "Attempt to collect money from Buyer " + this.highestBidderName + " or pay "
+					+ "money to Seller " + this.sellerName + " has failed for Lot " + this.lotNumber);
 		}
 		
 		lotStatus = LotStatus.UNSOLD;
@@ -116,7 +143,7 @@ public class Lot {
 	}
 	
 	public void successfulSale() {
-		lotStatus = LotStatus.SOLD;
+		
 	}
 
 }
