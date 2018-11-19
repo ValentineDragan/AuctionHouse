@@ -142,6 +142,10 @@ public class AuctionHouseImp implements AuctionHouse {
         if(!checkStringValid(sellerName)) {
         	return Status.error("Seller name in addLot cannot be null or empty");
         }
+        
+        if(sellers.get(sellerName) == null) {
+        	return Status.error("Seller with " + sellerName + " does not exist in the System");
+        }
                 
         if(lots.get(number) != null) {
         	return Status.error("Lot with number " + number + " already exists");

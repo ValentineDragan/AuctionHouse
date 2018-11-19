@@ -90,6 +90,7 @@ public class AuctionHouseTest {
                         messagingService,
                         bankingService));
 
+
     }
     /*
      * Setup story running through all the test cases.
@@ -98,6 +99,7 @@ public class AuctionHouseTest {
      * story prefixes and branch off in different ways. 
      */
     private void runStory(int endPoint) {
+    	    	
         assertOK(house.registerSeller("SellerY", "@SellerY", "SY A/C"));       
         assertOK(house.registerSeller("SellerZ", "@SellerZ", "SZ A/C")); 
         if (endPoint == 1) return;
@@ -152,8 +154,7 @@ public class AuctionHouseTest {
 
         bankingService.expectTransfer("BB A/C",  "BB-auth",  "AH A/C", new Money("110.00"));
         bankingService.expectTransfer("AH A/C",  "AH-auth",  "SY A/C", new Money("85.00"));
-        bankingService.verify();
-        
+        bankingService.verify();        
     }
     
     @Test
@@ -164,7 +165,6 @@ public class AuctionHouseTest {
         List<CatalogueEntry> actualCatalogue = house.viewCatalogue();
 
         assertEquals(expectedCatalogue, actualCatalogue);
-
     }
 
     @Test
@@ -231,5 +231,132 @@ public class AuctionHouseTest {
         runStory(8);
     }
      
+    // *** New tests start here ***
+    
+    private void runSecondStory(int endPoint) {
+    	addSellers();
+        if (endPoint == 1) return;
+        
+        addLots();
+        if (endPoint == 2) return;
+        
+        addBuyers();
+        if (endPoint == 3) return;
+        
+        noteInterest();
+        if (endPoint == 4) return;
+        
+        openLot();
+        if (endPoint == 5) return;
+        
+        makeBids();
+        if (endPoint == 6) return;
+        // TODO open Lot already closed
+    }
+    
+    private void addSellers() {
+        assertOK(house.registerSeller("Seller1", "@Seller1", "S1 A/C"));       
+        assertOK(house.registerSeller("Seller2", "@Seller2", "S2 A/C")); 
+        assertError(house.registerSeller("Seller2", "@Seller2a", "S2a A/C")); // exisiting name
+        assertError(house.registerSeller("Seller3", "", "S2a A/C")); // empty string
+        assertError(house.registerSeller("Seller4", "@Seller4", null)); // null string
+    }
+    
+    private void addLots() {
+        assertOK(house.addLot("Seller1", 3, "Bookcase", new Money("80.00")));
+        assertOK(house.addLot("Seller2", 2, "Statue", new Money("100.00")));
+        assertError(house.addLot("SellerC", 2, "Painting", new Money("200.00"))); // not exisiting seller
+        assertError(house.addLot("Seller1", 1, "Lamp", new Money("-2"))); // negative money
+        assertError(house.addLot("Seller2", 3, "Chair", new Money("60.00"))); // exisiting lot number
+    }
+    
+    private void addBuyers() {
+        assertOK(house.registerBuyer("Buyer1", "@Buyer1", "BA A/C", "BA-auth"));       
+        assertOK(house.registerBuyer("Buyer2", "@Buyer2", "BB A/C", "BB-auth"));
+        assertOK(house.registerBuyer("Buyer3", "@Buyer3", "BC A/C", "BC-auth"));
+        assertError(house.registerBuyer("Buyer2", "@Buyer2", "BB A/C", "BB-auth")); // exisiting name
+        assertError(house.registerBuyer("Buyer5", "@Buyer5", "BE A/C", "")); // empty string
+        assertError(house.registerBuyer("Buyer6", "@Buyer6", null, "BF-auth")); // null string
+    }
+    
+    private void noteInterest() {
+        assertOK(house.noteInterest("Buyer1", 2));
+        assertOK(house.noteInterest("Buyer2", 2));
+        assertOK(house.noteInterest("Buyer3", 3));
+        assertOK(house.noteInterest("Buyer1", 3));
+        assertError(house.noteInterest("Buyer1", 3)); //not existing lot
+        assertError(house.noteInterest("Buyer4", 2)); // not existing buyer
+        assertError(house.noteInterest("Buyer3", 3)); // already interested
+    }
+    
+    private void openLot() {
+        assertOK(house.openAuction("Auctioneer1", "@Auctioneer1", 2));
+        assertError(house.openAuction("Auctioneer1", "", 2)); // empty string
+        assertError(house.openAuction("Auctioneer1", "", 4)); // not existing lot
+        
+        messagingService.expectAuctionOpened("@Buyer1", 2);
+        messagingService.expectAuctionOpened("@Buyer2", 2);
+        messagingService.expectAuctionOpened("@Seller2", 2);
+        messagingService.verify();
+        
+        assertError(house.openAuction("Auctioneer2", "@Auctioneer2", 2)); // already open
+    }
+    
+    private void makeBids() {
+        // TODO      
+    }
+    
+    @Test
+    public void testRegisterSellerWithInvalidInputs() {
+    	logger.info(makeBanner("testRegisterSellerWIthInvalidInputs"));
+    	runSecondStory(1);    	
+    }
+    
+    @Test
+    public void testAddLotWithExpectedErrors() {
+    	logger.info(makeBanner("testAddLotWithExpectedErrors"));
+    	runSecondStory(2);
+    }
+    
+    // Ensure lots wirh return error status were not added
+    @Test
+    public void testViewCatalogueEntries() {
+        logger.info(makeBanner("testViewCatalogueEntries"));
+    	runSecondStory(2);
+        
+        List<CatalogueEntry> expectedCatalogueEntries = new ArrayList<CatalogueEntry>();
+        expectedCatalogueEntries.add(new CatalogueEntry(2, "Statue", LotStatus.UNSOLD));
+        expectedCatalogueEntries.add(new CatalogueEntry(3, "Bookcase", LotStatus.UNSOLD)); 
+ 
+        List<CatalogueEntry> actualCatalogue = house.viewCatalogue();
+
+        assertEquals(expectedCatalogueEntries, actualCatalogue);
+    }
+    
+    @Test
+    public void testRegisterBuyerWithInvalidInputs() {
+    	logger.info(makeBanner("testRegisterBuyerWithInvalidInputs"));
+    	runSecondStory(3);
+    }
+    
+    @Test
+    public void testNoteInterestWithExpectedErrors() {
+        logger.info(makeBanner("testNoteInterestWithExpectedErrors"));
+        runSecondStory(4);
+    }
+    
+    @Test
+    public void testOpenAuctionWithExpectedErrors() {
+    	logger.info(makeBanner("testNoteInterestWithExpectedErrors"));
+    	runSecondStory(5);
+    }
+    
+    @Test
+    public void testMakeBidsWithExpectedErrors() {
+    	logger.info(makeBanner("testMakeBidWithExpectedErrors"));
+    	runSecondStory(6);
+    }
+    
+    // *** New tests end here ***
     
 }
