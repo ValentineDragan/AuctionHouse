@@ -14,11 +14,10 @@ public class Buyer {
 	private List<Lot> biddedLots = new ArrayList<Lot>();
 	private List<Lot> interestedLots = new ArrayList<Lot>();
 	
-	public Buyer(String name, PersonalDetails personalDetails, String messagingAddress, String buyerAccount,
+	public Buyer(String name, String messagingAddress, String buyerAccount,
 			String buyerAuthorisation) {
 		super();
 		this.name = name;
-		this.personalDetails = personalDetails;
 		this.messagingAddress = messagingAddress;
 		this.buyerAccount = buyerAccount;
 		this.buyerAuthorisation = buyerAuthorisation;

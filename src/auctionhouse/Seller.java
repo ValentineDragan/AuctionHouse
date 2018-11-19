@@ -12,10 +12,9 @@ public class Seller {
 	
 	private List<Lot> createdLots = new ArrayList<Lot>();
 	
-	public Seller(String name, PersonalDetails personalDetails, String messagingAddress, String sellerAccount) {
+	public Seller(String name, String messagingAddress, String sellerAccount) {
 		super();
 		this.name = name;
-		this.personalDetails = personalDetails;
 		this.messagingAddress = messagingAddress;
 		this.sellerAccount = sellerAccount;
 	}
