@@ -44,8 +44,14 @@ public class AuctionHouseImp implements AuctionHouse {
     }
     
 
-    // Creates a new Buyer object, and adds it to the buyers HashMap.
-    // Return the Status: 'Error' if the Buyer already exists, or 'OK' if the new Buyer has been created.
+    /**
+     * Creates a new Buyer object, and adds it to the buyers HashMap.
+     * @param name: name of buyer to register
+     * @param address: messaging address 
+     * @param bankAccount
+     * @param bankAuthCode: bank authorisation for payments
+     * @return Status 'Error' if the Buyer already exists, or 'OK' if the new Buyer has been successfully created
+     */
     public Status registerBuyer(
             String name,
             String address,
@@ -53,36 +59,79 @@ public class AuctionHouseImp implements AuctionHouse {
             String bankAuthCode) {
         logger.fine(startBanner("registerBuyer " + name));
         
-        if(buyers.get(name) != null) {
-        	return Status.error("Name exists as buyer already");
+        // Check input is valid
+        if(!checkStringValid(name)) {
+        	return Status.error("Buyer name given to registerBuyer cannot be null or empty");
         }
         
+        if(!checkStringValid(address)) {
+        	return Status.error("Address given to registerBuyer cannot be null or empty");
+        }
+        
+        if(!checkStringValid(bankAccount)) {
+        	return Status.error("Bank account given to registerBuyer cannot be null or empty");
+        }
+        
+        if(!checkStringValid(bankAuthCode)) {
+        	return Status.error("Bank authorisation code given to registerBuyer cannot be null or empty");
+        }
+        
+        if(buyers.get(name) != null) {
+        	return Status.error("Name " + name + " exists as buyer already");
+        }
+        
+        // Create new buyer object and add it to map
         Buyer buyer = new Buyer(name, address, bankAccount, bankAuthCode);
         buyers.put(name, buyer);
         
         return Status.OK();
     }
 
-    // Creates a new Seller object, and adds it to the sellers HashMap.
-    // Return the Status 'Error' if the Seller already exists, or 'OK' if the new Seller has been created.
+    /**
+     * Creates a new Seller object, and adds it to the sellers HashMap.
+     * @param name: name of seller to register
+     * @param address: messaging address
+     * @param bankAccount
+     * @return Status 'Error' if the Seller already exists, or 'OK' if the new Seller has been created.
+     */
     public Status registerSeller(
             String name,
             String address,
             String bankAccount) {
         logger.fine(startBanner("registerSeller " + name));
         
-        if(sellers.get(name) != null) {
-        	return Status.error("Name exists as seller already");
+        // Check input is valid
+        if(!checkStringValid(name)) {
+        	return Status.error("Seller name given to registerSeller cannot be null or empty");
         }
         
+        if(!checkStringValid(address)) {
+        	return Status.error("Address given to registerSeller cannot be null or empty");
+        }
+        
+        if(!checkStringValid(bankAccount)) {
+        	return Status.error("Bank account given to registerSeller cannot be null or empty");
+        }
+        
+        if(sellers.get(name) != null) {
+        	return Status.error("Name " + name + " exists as seller already");
+        }
+        
+        // Create new seller object and put it to map
         Seller seller = new Seller(name, address, bankAccount);
         sellers.put(name, seller);
         
         return Status.OK();      
     }
 
-    // Creates a new Lot object, adds it to the lots HashMap and adds its CatalogueEntry to the catalogueEntries Queue.
-    // Return the Status: 'Error' if the Lot already exists, or 'OK' if the new Lot has been created.
+    /**
+     * Creates a new Lot object, adds it to the lots HashMap and adds its CatalogueEntry to the catalogueEntries Queue.
+     * @param sellerName
+     * @param number: unique lot number
+     * @param description
+     * @param reservePrice
+     * @return Status: 'Error' if the Lot already exists, or 'OK' if the new Lot has been created.
+     */
     public Status addLot(
             String sellerName,
             int number,
@@ -90,58 +139,104 @@ public class AuctionHouseImp implements AuctionHouse {
             Money reservePrice) {
         logger.fine(startBanner("addLot " + sellerName + " " + number));
         
-        if(lots.get(number) != null) {
-        	return Status.error("Lot already exists");
+        // Check input is valid
+        if(!checkStringValid(sellerName)) {
+        	return Status.error("Seller name in addLot cannot be null or empty");
         }
-                  
+                
+        if(lots.get(number) != null) {
+        	return Status.error("Lot with number " + number + " already exists");
+        }
+        
+        if(!checkStringValid(description)) {
+        	return Status.error("Lot description in addLot cannot pe null or empty");
+        }
+        
+        if(reservePrice == null || reservePrice.lessEqual(new Money("0"))) {
+        	return Status.error("reservePrice cannot be null or of negative value in addLot");
+        }
+                
+        // Create new lot object and put it to map.
         Lot lot = new Lot(sellerName, number, description, reservePrice);
         lots.put(number, lot);
-        
-        // update status of CE!
+
+        // Add the corresponding catalogue entry in the priority queue of catalogue entries.
         catalogueEntries.add(lot.getCatalogueEntry());
         
         return Status.OK();    
     }
 
-    // Returns a List of Catalogue Entries, ordered by their lotNumber.
+    /**
+     * @return a List of Catalogue Entries, ordered by their lotNumber.
+     */
     public List<CatalogueEntry> viewCatalogue() {
         logger.fine(startBanner("viewCatalog"));
         
         logger.fine("Catalogue: " + catalogueEntries.toString());
         
+        // Put every entry in the priority queue in a list (order is preserved)
         List<CatalogueEntry> catalogueList = new ArrayList<CatalogueEntry>();
         for(CatalogueEntry ce: catalogueEntries) {
         	catalogueList.add(ce);
         }
+        
         return catalogueList;
     }
 
-    // Sends a signal to the Lot to add new interested buyer.
-    // Returns the Status: 'Error' if the Lot doesn't exist, or 'OK' if the buyer has been added successfully.
+    /**
+     * Sends a signal to the Lot to add new interested buyer.
+     * @return Status: 'Error' if the Lot or Buyer doesn't exist, or 'OK' if the buyer has been added successfully.
+     */
     public Status noteInterest(
             String buyerName,
             int lotNumber) {
         logger.fine(startBanner("noteInterest " + buyerName + " " + lotNumber));
         
-        Lot lot = lots.get(lotNumber);
-        if(lot == null) {
-        	return Status.error("No exisitng lot");
+        if(!checkStringValid(buyerName)) {
+        	return Status.error("Buyer name in noteInterest cannot be null or empty");
         }
         
-        // Check if buyer is already in the interestedBuyers list! It should return an error
-        lot.addInterestedBuyer(buyerName);    	
-            
-        return Status.OK();   
+        // Check Buyer with buyerName registered in the system.
+        if(buyers.get(buyerName) == null) {
+        	return Status.error("Buyer with name " + buyerName + " not registered");
+        }
+        
+        Lot lot = lots.get(lotNumber);
+        if(lot == null) {
+        	return Status.error("Lot with number " + lotNumber + " does not exist");
+        }
+                    
+        return lot.addInterestedBuyer(buyerName);   
     }
 
-    // Sends a signal to the Lot to open auction. Gets the list of all interested buyers, and uses messagingService to send a message to all the interested buyers.
-    // Returns the Status: ERROR, if the Lot doesn't exist, or Status= lot.openLot(..) ... complete here<
+    /**
+     * Opens lot auction. Gets the list of all interested buyers
+     * and uses messagingService to send a message to all the interested buyers.
+     * @param auctioneerName
+     * @param auctioneerAddress
+     * @param lotNumber
+     * @return Status: ERROR if lot does not exists or not in UNOPENED state.
+     */
     public Status openAuction(
             String auctioneerName,
             String auctioneerAddress,
             int lotNumber) {
         logger.fine(startBanner("openAuction " + auctioneerName + " " + lotNumber));
         
+        if(!checkStringValid(auctioneerName)) {
+        	return Status.error("Auctioneer name in openAuction cannot be null or empty");
+        }
+        
+        if(!checkStringValid(auctioneerAddress)) {
+        	return Status.error("Auctioneer address in openAuction cannot be null or empty");
+        }
+        
+        Lot lot = lots.get(lotNumber);
+        if(lot == null) {
+        	return Status.error("Lot with number " + lotNumber + " does not exist");
+        }
+        
+        // Create the auctioneer object if it does not exists already
         Auctioneer auctioneer;
         if(auctioneers.get(auctioneerName) != null) {
         	auctioneer = auctioneers.get(auctioneerName);
@@ -150,11 +245,10 @@ public class AuctionHouseImp implements AuctionHouse {
         	auctioneers.put(auctioneerName, auctioneer);
         }
         
-        Lot lot = lots.get(lotNumber);
-        Status status;
-        
-        if(lot != null) {
-        	status = lot.openLot(auctioneerName);
+        Status status = lot.openLot(auctioneerName);
+        // !!!!
+        if(status.kind == Status.Kind.OK) {
+        	
         	List<String> interestedBuyers = lot.getInterestedBuyers();
         	
         	Seller seller = sellers.get(lot.getSellerName());
@@ -163,12 +257,9 @@ public class AuctionHouseImp implements AuctionHouse {
         	for(String buyerName: interestedBuyers) {
         		Buyer interestedBuyer = buyers.get(buyerName);
         		messagingService.auctionOpened(interestedBuyer.getMessagingAddress(), lotNumber);
-        	}
-        	
-        } else {
-        	status = new Status(Status.Kind.ERROR, "Lot does not exist");
-        }       
-        
+        	}  
+        }
+    	         
         return status;
     }
 
@@ -210,6 +301,7 @@ public class AuctionHouseImp implements AuctionHouse {
         return status;    
     }
 
+    // check same auctioneer
     public Status closeAuction(
             String auctioneerName,
             int lotNumber) {
@@ -254,6 +346,17 @@ public class AuctionHouseImp implements AuctionHouse {
         	return new Status(Status.Kind.ERROR, "Lot does not exist");
         }       
        
+    }
+    
+    // Check a string is not null or empty.
+    private boolean checkStringValid(String string) {
+    	
+    	if(string == null)
+    		return false;
+    	if(string.length() == 0)
+    		return false;
+    	
+    	return true;
     }
     
 }
