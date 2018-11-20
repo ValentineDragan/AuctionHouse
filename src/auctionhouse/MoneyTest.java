@@ -111,8 +111,32 @@ public class MoneyTest {
     @Test 
     public void testEquals() {
     	Money val1 = new Money("0.65");
-    	Money val2 = new Money("0.65");
+    	Money val2 = new Money("0.651");
     	assertTrue(val1.equals(val2));
+    }
+    
+    @Test 
+    public void testAddOneNegativeValue() {
+    	Money val1 = new Money("-0.653");
+    	Money val2 = new Money("0.65");
+    	Money result = val1.add(val2);
+    	assertEquals(result, new Money("0.00"));
+    }
+    
+    @Test 
+    public void testAddTwoNegativeValues() {
+    	Money val1 = new Money("-0.653");
+    	Money val2 = new Money("-0.649");
+    	Money result = val1.add(val2);
+    	assertEquals(result, new Money("-1.30"));
+    }
+    
+    @Test 
+    public void testSubtractNegativeValues() {
+    	Money val1 = new Money("-0.653");
+    	Money val2 = new Money("-0.649");
+    	Money result = val1.subtract(val2);
+    	assertEquals(result, new Money("0.00"));
     }
     /*
      * Put all class modifications above.
