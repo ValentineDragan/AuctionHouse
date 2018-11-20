@@ -357,6 +357,18 @@ public class AuctionHouseImp implements AuctionHouse {
         	return Status.error("Bid value cannot be negative in makeBid");
         }
         
+        if (lotToBid.getLotStatus() != LotStatus.IN_AUCTION) {
+        	logger.warning("Bid cannot be made when the lot is not in auction");
+           	logger.warning("Make bid failed. Exiting");
+        	return Status.error("Bid cannot be made when the lot is not in auction");
+        }
+        
+       if (bid.subtract(lotToBid.getHighestBidAmount()).compareTo(parameters.increment) < 0) {
+    	   logger.warning("Bid difference cannot be less than the increment bid");
+    	   logger.warning("Make bid failed. Exiting");
+    	   return Status.error("Bid difference cannot be less than the increment bid");
+       }
+        
         Status status = lotToBid.makeBid(buyerName, bid);
         
         // Message auctioneer, interested buyers, seller
