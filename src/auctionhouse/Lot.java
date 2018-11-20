@@ -2,6 +2,7 @@ package auctionhouse;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 public class Lot {
 	
@@ -16,6 +17,8 @@ public class Lot {
 	private Money highestBidAmount;
 	
 	private List<String> interestedBuyerNames =  new ArrayList<String>();
+	
+	private static Logger logger = Logger.getLogger("auctionhouse");
 	
 	public Lot(String sellerName, int lotNumber, String description, Money reservePrice) {
 
@@ -76,9 +79,12 @@ public class Lot {
 	public Status addInterestedBuyer(String buyerName) {
 		if(!interestedBuyerNames.contains(buyerName)) {
 			interestedBuyerNames.add(buyerName);
+			
+			logger.info("Buyer " + buyerName +  " added to Lot " + this.lotNumber + "'s list of interested buyers successfully");
 			return new Status(Status.Kind.OK, "Buyer " + buyerName +  " added to Lot " + this.lotNumber + "'s list of interested buyers");
 		}
 		
+		logger.info("Buyer " + buyerName + " is already interested in Lot " + this.lotNumber);
 		return new Status(Status.Kind.ERROR, "Buyer " + buyerName + " is already interested in Lot " + this.lotNumber);
 	}
 
@@ -94,10 +100,14 @@ public class Lot {
 	public Status makeBid(String newBidderName, Money newBidAmount) {
 		
 		if(lotStatus != LotStatus.IN_AUCTION) {
+			logger.warning("Lot with " + lotNumber + " is not open for auction");
+			logger.warning("Make bid failed.");
 			return new Status(Status.Kind.ERROR, "Lot with " + lotNumber + " is not open for auction");
 		}
 		
 		if(!interestedBuyerNames.contains(newBidderName)) {
+			logger.warning("Buyer " + newBidderName + " is not interested in Lot " + this.lotNumber);
+			logger.warning("Make bid failed.");
 			return new Status(Status.Kind.ERROR, "Buyer " + newBidderName + " is not interested in Lot " + this.lotNumber);
 		}
 		
@@ -105,9 +115,12 @@ public class Lot {
 			highestBidderName = newBidderName;
 			highestBidAmount = newBidAmount;
 			
+			logger.info("Successful bid");
 			return new Status(Status.Kind.OK, "Buyer " + newBidderName + " has successfully bidded on Lot " + this.lotNumber);
 		}
 		
+		logger.warning("Buyer " + newBidderName + " tried to bid less than the highest bid on Lot " + this.lotNumber);
+		logger.warning("Make bid failed");
 		return new Status(Status.Kind.ERROR, "Buyer " + newBidderName + " tried to bid less than the highest bid on Lot " + this.lotNumber);		
 	}
 	
@@ -120,8 +133,11 @@ public class Lot {
 	 */
 	public Status openLot(String assignedAuctioneerName) {
 		
-		if(lotStatus != LotStatus.UNSOLD)
+		if(lotStatus != LotStatus.UNSOLD) {
+			logger.warning("Lot " + this.lotNumber + ", which has already been auctioned");
+			logger.warning("Open lot failed");
 			return new Status(Status.Kind.ERROR, "Auctioneer " + assignedAuctioneerName + " tried to open Lot " + this.lotNumber + ", which has already been auctioned");
+		}		
 		
 		this.assignedAuctioneerName = assignedAuctioneerName;
 		lotStatus = LotStatus.IN_AUCTION;
@@ -129,10 +145,12 @@ public class Lot {
 		highestBidderName = "";
 		highestBidAmount = new Money("0");
 		
+		logger.warning("Open lot successful");
 		return new Status(Status.Kind.OK, assignedAuctioneerName + " has opened Lot " + this.lotNumber + " for bidding");
 	}
 	
 	public void closeLot(LotStatus lotStatus) {
+		logger.info("Lot status changed to " + lotStatus);
 		this.lotStatus = lotStatus;
 		catalogueEntry.status = lotStatus;
 	}

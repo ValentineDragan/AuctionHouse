@@ -116,6 +116,10 @@ public class Money implements Comparable<Money> {
         return compareTo(oM) == 0;       
     }
     
+    /**
+     * Compute the hash code of the value
+     * @return the hash code of the value
+     */
     @Override
     public int hashCode() {
         return Long.hashCode(getNearestPence(value));
