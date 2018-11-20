@@ -93,6 +93,10 @@ public class Lot {
 	 */
 	public Status makeBid(String newBidderName, Money newBidAmount) {
 		
+		if(lotStatus != LotStatus.IN_AUCTION) {
+			return new Status(Status.Kind.ERROR, "Lot with " + lotNumber + " is not open for auction");
+		}
+		
 		if(!interestedBuyerNames.contains(newBidderName)) {
 			return new Status(Status.Kind.ERROR, "Buyer " + newBidderName + " is not interested in Lot " + this.lotNumber);
 		}

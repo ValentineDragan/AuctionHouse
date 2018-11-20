@@ -44,6 +44,10 @@ public class AuctionHouseTest {
         assertEquals(Status.Kind.SALE, status.kind);
     }
     
+    private static void assertNoSale(Status status) { 
+        assertEquals(Status.Kind.NO_SALE, status.kind);
+    }
+    
     /*
      * Logging functionality
      */
@@ -234,6 +238,7 @@ public class AuctionHouseTest {
     // *** New tests start here ***
     
     private void runSecondStory(int endPoint) {
+    	
     	addSellers();
         if (endPoint == 1) return;
         
@@ -251,12 +256,15 @@ public class AuctionHouseTest {
         
         makeBids();
         if (endPoint == 6) return;
-        // TODO open Lot already closed
-    }
+        
+        closeLotNotSold();
+        if (endPoint == 7) return;
+    } 
     
     private void addSellers() {
         assertOK(house.registerSeller("Seller1", "@Seller1", "S1 A/C"));       
         assertOK(house.registerSeller("Seller2", "@Seller2", "S2 A/C")); 
+        
         assertError(house.registerSeller("Seller2", "@Seller2a", "S2a A/C")); // exisiting name
         assertError(house.registerSeller("Seller3", "", "S2a A/C")); // empty string
         assertError(house.registerSeller("Seller4", "@Seller4", null)); // null string
@@ -265,6 +273,7 @@ public class AuctionHouseTest {
     private void addLots() {
         assertOK(house.addLot("Seller1", 3, "Bookcase", new Money("80.00")));
         assertOK(house.addLot("Seller2", 2, "Statue", new Money("100.00")));
+        
         assertError(house.addLot("SellerC", 2, "Painting", new Money("200.00"))); // not exisiting seller
         assertError(house.addLot("Seller1", 1, "Lamp", new Money("-2"))); // negative money
         assertError(house.addLot("Seller2", 3, "Chair", new Money("60.00"))); // exisiting lot number
@@ -274,6 +283,7 @@ public class AuctionHouseTest {
         assertOK(house.registerBuyer("Buyer1", "@Buyer1", "BA A/C", "BA-auth"));       
         assertOK(house.registerBuyer("Buyer2", "@Buyer2", "BB A/C", "BB-auth"));
         assertOK(house.registerBuyer("Buyer3", "@Buyer3", "BC A/C", "BC-auth"));
+        
         assertError(house.registerBuyer("Buyer2", "@Buyer2", "BB A/C", "BB-auth")); // exisiting name
         assertError(house.registerBuyer("Buyer5", "@Buyer5", "BE A/C", "")); // empty string
         assertError(house.registerBuyer("Buyer6", "@Buyer6", null, "BF-auth")); // null string
@@ -284,6 +294,7 @@ public class AuctionHouseTest {
         assertOK(house.noteInterest("Buyer2", 2));
         assertOK(house.noteInterest("Buyer3", 3));
         assertOK(house.noteInterest("Buyer1", 3));
+        
         assertError(house.noteInterest("Buyer1", 3)); //not existing lot
         assertError(house.noteInterest("Buyer4", 2)); // not existing buyer
         assertError(house.noteInterest("Buyer3", 3)); // already interested
@@ -291,6 +302,7 @@ public class AuctionHouseTest {
     
     private void openLot() {
         assertOK(house.openAuction("Auctioneer1", "@Auctioneer1", 2));
+        
         assertError(house.openAuction("Auctioneer1", "", 2)); // empty string
         assertError(house.openAuction("Auctioneer1", "", 4)); // not existing lot
         
@@ -303,7 +315,39 @@ public class AuctionHouseTest {
     }
     
     private void makeBids() {
-        // TODO      
+    	Money m60 = new Money("60.00");
+    	
+        assertError(house.makeBid("BuyerA", 2, m60)); // buyer not registered with the system
+        assertError(house.makeBid("", 2, m60)); // buyer name null
+        assertError(house.makeBid("Buyer1", 1, m60)); // lot does not exist
+        assertError(house.makeBid("Buyer3", 2, m60)); // buyer not interested in lot 
+        assertError(house.makeBid("Buyer3", 3, m60)); // lot not open
+        assertError(house.makeBid("Buyer1", 2, new Money("-100.00"))); // bid value negative
+        
+        assertOK(house.makeBid("Buyer2", 2, m60));
+        
+        messagingService.expectBidReceived("@Buyer1", 2, m60);
+        messagingService.expectBidReceived("@Auctioneer1", 2, m60);
+        messagingService.expectBidReceived("@Seller2", 2, m60);
+        messagingService.verify();
+    }
+    
+    private void closeLotNotSold() {
+    	
+    	assertError(house.closeAuction("",  2)); // auctioneer name invalid
+    	assertError(house.closeAuction("Auctioneer2",  2)); // auctioneer2 did not open auction for lot 2
+    	assertError(house.closeAuction("Auctioneer1",  1)); // lot 1 does not exist
+    	assertError(house.closeAuction("Auctioneer1",  3)); // lot 3 is not open
+    	
+    	assertNoSale(house.closeAuction("Auctioneer1",  2)); // hammer price less than reserved
+    	
+    	assertEquals(house.viewCatalogue().get(0).lotNumber, 2);
+    	assertEquals(house.viewCatalogue().get(0).status, LotStatus.UNSOLD); // correct catalogue entry state unsold
+    	
+    	messagingService.expectLotUnsold("@Buyer1", 2);
+    	messagingService.expectLotUnsold("@Buyer2", 2);
+    	messagingService.expectLotUnsold("@Seller2", 2);
+        messagingService.verify();       
     }
     
     @Test
@@ -318,7 +362,7 @@ public class AuctionHouseTest {
     	runSecondStory(2);
     }
     
-    // Ensure lots wirh return error status were not added
+    // Ensure lots with return error status were not added
     @Test
     public void testViewCatalogueEntries() {
         logger.info(makeBanner("testViewCatalogueEntries"));
@@ -355,6 +399,21 @@ public class AuctionHouseTest {
     public void testMakeBidsWithExpectedErrors() {
     	logger.info(makeBanner("testMakeBidWithExpectedErrors"));
     	runSecondStory(6);
+    }
+    
+    @Test
+    public void testCloseLotNotSold() {
+    	logger.info(makeBanner("testCloseLotNotSold"));
+    	runSecondStory(7);
+    }
+    
+    @Test
+    public void testOpenSoldLot() {
+    	logger.info(makeBanner("testCloseLotNotSold"));
+    	runStory(8);
+    	
+    	// try to open a sold lot again
+    	assertError(house.openAuction("Auctioneer1", "@Auctioneer1", 1));
     }
     
     // *** New tests end here ***

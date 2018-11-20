@@ -288,6 +288,10 @@ public class AuctionHouseImp implements AuctionHouse {
         	return Status.error("Lot with number " + lotNumber + " does not exists in the System");
         }
         
+        if(bid == null || bid.lessEqual(new Money("0"))) {
+        	return Status.error("Bid value cannot be negative in makeBid");
+        }
+        
         Status status = lotToBid.makeBid(buyerName, bid);
         
         // Message auctioneer, interested buyers, seller
@@ -332,13 +336,13 @@ public class AuctionHouseImp implements AuctionHouse {
         	return Status.error("Lot with number " + lotNumber + " does not exist");
         }
         
-        if(!lot.getAssignedAuctioneerName().equals(auctioneerName)) {
-        	return Status.error("Lot auction must be closed by auctioneer that opened it!");
-        }
-        
         if (lot.getLotStatus() != LotStatus.IN_AUCTION) {
         	return Status.error("Lot with number " + lotNumber + " was not in open auction");
         }
+        
+        if(!lot.getAssignedAuctioneerName().equals(auctioneerName)) {
+        	return Status.error("Lot auction must be closed by auctioneer that opened it!");
+        }   
 
         Buyer highestBidder = buyers.get(lot.getHighestBidderName());
 		Seller seller = sellers.get(lot.getSellerName());
@@ -373,7 +377,6 @@ public class AuctionHouseImp implements AuctionHouse {
 		
 		return new Status(Status.Kind.SALE_PENDING_PAYMENT, "One of the bank transfers failed for lot " + lotNumber);			        
     }
-
         		
     // Check a string is not null or empty.
     private boolean checkStringValid(String string) {
