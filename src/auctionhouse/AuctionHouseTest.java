@@ -391,7 +391,7 @@ public class AuctionHouseTest {
     
     @Test
     public void testOpenAuctionWithExpectedErrors() {
-    	logger.info(makeBanner("testNoteInterestWithExpectedErrors"));
+    	logger.info(makeBanner("testOpenAuctionWithExpectedErrors"));
     	runSecondStory(5);
     }
     
@@ -409,7 +409,7 @@ public class AuctionHouseTest {
     
     @Test
     public void testOpenSoldLot() {
-    	logger.info(makeBanner("testCloseLotNotSold"));
+    	logger.info(makeBanner("testOpenSoldLot"));
     	runStory(8);
     	
     	// try to open a sold lot again

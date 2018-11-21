@@ -454,29 +454,34 @@ public class AuctionHouseImp implements AuctionHouse {
         }	
         
 		Money moneyToCollectFromBuyer = hammerPrice.addPercent(parameters.buyerPremium);
-		Money moneyToPaySeller = hammerPrice.subtract(new Money(Double.toString(parameters.commission)));
-		
-		Status buyerTransferStatus = bankingService.transfer(highestBidder.getBuyerAccount(), highestBidder.getBuyerAuthorisation(), parameters.houseBankAccount, moneyToCollectFromBuyer);
-		Status sellerTransferStatus = bankingService.transfer(parameters.houseBankAccount, parameters.houseBankAuthCode, seller.getSellerAccount(), moneyToPaySeller);
 
-		// Successful transfers, lot sold.
-		if(buyerTransferStatus.kind == Status.Kind.OK && sellerTransferStatus.kind == Status.Kind.OK) {
-			lot.closeLot(LotStatus.SOLD);
+		// Check Buyer -> AuctionHouse transfer was successful before doing AuctionHouse -> seller transfer
+		Status buyerTransferStatus = bankingService.transfer(highestBidder.getBuyerAccount(), highestBidder.getBuyerAuthorisation(), parameters.houseBankAccount, moneyToCollectFromBuyer);
+		if(buyerTransferStatus.kind == Status.Kind.OK) {		
 			
-			logger.info("Successful sale for lot " + lotNumber);
-			logger.info("Messaging buyers and sellers...");
-			
-			sendMessageToBuyers(lot.getInterestedBuyers(), MessageFlag.LOT_SOLD, lotNumber, new Money("0"));
-			messagingService.lotSold(seller.getMessagingAddress(), lotNumber);
-			
-			logger.info("Auction closed. Exiting." + LS);
-			return new Status(Status.Kind.SALE, "Successful sale for lot " + lotNumber);
-		} 
+			Money moneyToPaySeller = hammerPrice.subtract(new Money(Double.toString(parameters.commission)));
+			Status sellerTransferStatus = bankingService.transfer(parameters.houseBankAccount, parameters.houseBankAuthCode, seller.getSellerAccount(), moneyToPaySeller);
+			// Successful transfers, lot sold.
+			if(sellerTransferStatus.kind == Status.Kind.OK) {
+				lot.closeLot(LotStatus.SOLD);
+				
+				logger.info("Successful sale for lot " + lotNumber);
+				logger.info("Messaging buyers and sellers...");
+				
+				sendMessageToBuyers(lot.getInterestedBuyers(), MessageFlag.LOT_SOLD, lotNumber, new Money("0"));
+				messagingService.lotSold(seller.getMessagingAddress(), lotNumber);
+				
+				logger.info("Auction closed. Exiting." + LS);
+				return new Status(Status.Kind.SALE, "Successful sale for lot " + lotNumber);
+			} 			
+			logger.warning( "Bank transfer from Auction house to Seller failed for lot " + lotNumber);
+		} else {
+			logger.warning( "Bank transfer from Buyer to Auction House failed for lot " + lotNumber);
+		}		
 		
 		// One of the transfers failed.
 		lot.closeLot(LotStatus.SOLD_PENDING_PAYMENT);
 		
-		logger.info( "One of the bank transfers failed for lot " + lotNumber);
 		logger.info("Auction closed. Exiting." + LS);
 		return new Status(Status.Kind.SALE_PENDING_PAYMENT, "One of the bank transfers failed for lot " + lotNumber);			        
     }
